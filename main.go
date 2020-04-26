@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"time"
@@ -24,7 +25,23 @@ func runAndPrint(gorun string) {
 	cmd.Run()
 }
 
-func runInfinite(path, port, main string) {
+// Test to check..
+func Test() {
+	go func() {
+		time.Sleep(500 * time.Millisecond)
+		l, err := ioutil.ReadFile("test/main.go")
+		if err != nil {
+			fmt.Println(err, "read")
+		}
+		err = ioutil.WriteFile("test/main.go", l, 0644)
+		if err != nil {
+			fmt.Println(err, "write")
+		}
+	}()
+	runInfinite("./test/", "3000", "main.go", true)
+}
+
+func runInfinite(path, port, main string, t bool) {
 	gorun := "go run " + path + main
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
@@ -32,6 +49,7 @@ func runInfinite(path, port, main string) {
 	}
 	defer watcher.Close()
 	done := make(chan bool)
+	quit := make(chan bool)
 	go func() {
 		for {
 			select {
@@ -53,6 +71,15 @@ func runInfinite(path, port, main string) {
 
 			case err := <-watcher.Errors:
 				fmt.Println("ERROR", err)
+			case <-quit:
+				if cancel != nil {
+					cancel()
+				}
+				s := fmt.Sprintf("lsof -i tcp:%s | awk 'NR!=1 {print $2}' | xargs kill", port)
+				x := exec.Command("bash", "-c", s)
+				x.Run()
+				done <- true
+				return
 			}
 		}
 	}()
@@ -61,6 +88,12 @@ func runInfinite(path, port, main string) {
 	}
 	go runAndPrint(gorun)
 
+	go func() {
+		time.Sleep(600 * time.Millisecond)
+		if t {
+			quit <- true
+		}
+	}()
 	<-done
 }
 
@@ -72,5 +105,5 @@ func main() {
 	if *path == "" || *port == "" {
 		panic("path and port cannot be emtpy")
 	}
-	runInfinite(*path, *port, *main)
+	runInfinite(*path, *port, *main, false)
 }
