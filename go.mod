@@ -4,5 +4,7 @@ go 1.13
 
 require (
 	github.com/fsnotify/fsnotify v1.4.9
-	golang.org/x/sys v0.0.0-20200323222414-85ca7c5b95cd // indirect
+	github.com/gofiber/logger v0.0.6 // indirect
+	github.com/gofiber/recover v0.0.5 // indirect
+	github.com/joho/godotenv v1.3.0 // indirect
 )

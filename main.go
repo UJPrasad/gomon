@@ -41,6 +41,21 @@ func Test() {
 	runInfinite("./test/", "3000", "main.go", true)
 }
 
+func recursiveWatch(w *fsnotify.Watcher, path string) {
+	if err := w.Add(path); err != nil {
+		fmt.Println("ERROR", err, "Path", path)
+	}
+	files, err := ioutil.ReadDir(path)
+	if err != nil {
+		fmt.Println(err)
+	}
+	for _, f := range files {
+		if f.Name()[0] != '.' && f.IsDir() {
+			recursiveWatch(w, path+f.Name()+"/")
+		}
+	}
+}
+
 func runInfinite(path, port, main string, t bool) {
 	gorun := "go run " + path + main
 	watcher, err := fsnotify.NewWatcher()
@@ -83,9 +98,7 @@ func runInfinite(path, port, main string, t bool) {
 			}
 		}
 	}()
-	if err := watcher.Add(path); err != nil {
-		fmt.Println("ERROR", err)
-	}
+	recursiveWatch(watcher, path)
 	go runAndPrint(gorun)
 
 	go func() {
